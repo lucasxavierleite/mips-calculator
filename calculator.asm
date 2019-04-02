@@ -10,6 +10,10 @@
 	divisor_1: .asciiz "Insira o numero a ser dividido:\n"
 	divisor_2: .asciiz "Insira o divisor:\n"
 	
+	massa_msg: .asciiz "Insira a massa:\n"
+	altura_msg: .asciiz "Insira a altura\n"
+	imc_msg: .asciiz "IMC: "
+	
 	quociente: .asciiz "Quociente:"
 	resto: .asciiz "Resto:"
 
@@ -309,7 +313,39 @@
 	
 	#*****IMC*****#  
 	
-	IMC:
+	IMC: #Recebe como parâmetros a massa da pessoa e sua altura, retornando o seu IMC
+	
+	li $v0, 4
+	la $a0, massa_msg
+	syscall
+	
+	li $v0, 6
+	syscall
+	mov.s $f1, $f0
+	
+	li $v0, 4
+	la $a0, altura_msg
+	syscall
+	
+	li $v0, 6
+	syscall
+	mov.s $f2, $f0
+	
+	mul.s $f3, $f2, $f2
+	
+	div.s $f4, $f1, $f3
+	
+	li $v0, 4
+	la $a0, imc_msg
+	syscall
+	
+	li $v0, 2
+	mov.s $f12, $f4
+	syscall
+	
+	li $v0, 4
+	la $a0, barra_n
+	syscall
 	
 	j title
 	
@@ -346,7 +382,7 @@
 		addi $t0, $t0, 1	#checamos o proximo numero
 		mul $t1, $t0, $t0	#colocamos em $t1 o valor desse numero ao quadrado
 		j loop_sqrt
-	end_sqrt:			#agora que sabemos que numero que � o desejado, podemos fazer $t0 -1, tendo as respostas que quermos
+	end_sqrt:			#agora que sabemos que numero que é o desejado, podemos fazer $t0 -1, tendo as respostas que quermos
 	
 	addi $t0, $t0, -1
 	jr $ra
