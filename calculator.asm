@@ -13,6 +13,13 @@
 	quociente: .asciiz "Quociente:"
 	resto: .asciiz "Resto:"
 
+  tab1: .asciiz "\nNumero: "
+  tab2: .asciiz "A tabuada do "
+  tab3: .asciiz " e: "
+  tab4: .asciiz "Erro: Numero nao esta entre 1 e 10."
+  tab5: .asciiz ", "
+  tab6: .asciiz ".\n"
+
 .text
 	title:
 	
@@ -250,7 +257,54 @@
 	#*****TABUADA*****#  
 	
 	tabuada:
-	
+  li $v0, 4 # Prints output to request input
+  la $a0, tab1
+  syscall
+  li $v0, 5 # Reads integer input
+  syscall
+  move $t0, $v0 # Copies $v0 to $t0 - in this case makes $t0 become the int that was just read
+
+  addi $t1, $zero, 1 # Error handling: Branches if input is more than 10 or less than 1
+  blt $t0, $t1, tabuada_error
+  addi $t1, $zero, 10
+  bgt $t0, $t1, tabuada_error
+
+  li $v0, 4 # Prints first bit of output (tab2, input, tab3)
+  la $a0, tab2
+  syscall
+  li $v0, 1
+  move $a0, $t0
+  syscall
+  li $v0, 4
+  la $a0, tab3
+  syscall
+
+  add $t1, $zero, $zero
+  addi $t3, $zero, 10
+  tabuada_loop:
+  addi $t1, $t1, 1 # Adds 1 before multiplying and printing
+  mul $t2, $t0, $t1 # Multiplies
+  li $v0, 1
+  move $a0, $t2
+  syscall
+  bne $t1, $t3, tabuada_loopy
+
+  li $v0, 4
+  la $a0, tab6
+  syscall
+  j title # Returns to menu
+
+  tabuada_loopy: # For maintaining output syntax
+  li $v0, 4
+  la $a0, tab5
+  syscall
+  j tabuada_loop
+
+  tabuada_error: # Error function
+  li $v0, 4
+  la $a0, tab4
+  syscall
+  j title # Returns to menu
 	j title
 	
 	#*****IMC*****#  
