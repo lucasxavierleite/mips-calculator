@@ -212,7 +212,7 @@ multiplicacao:
 	# Realiza a multiplicação
 	mult $t3, $t2
 
-	# Salva o conteúdo dos registradores 'mflo' e 'mfhi'
+	# Salva o conteúdo dos registradores 'lo' e 'hi'
 	mflo $t4
 	mfhi $t5
 
@@ -273,7 +273,7 @@ divisao:
 	# Realiza a divisão
 	div $t0, $t1
 
-	# Salva os valores do quociente e do resto ('mflo' e 'mfhi')
+	# Salva os valores do quociente e do resto ('lo' e 'hi')
 	mflo $t2
 	mfhi $t3
 
