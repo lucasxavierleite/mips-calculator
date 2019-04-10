@@ -1,8 +1,11 @@
 	.data
 
+# Valor "infinito" para verificação de overflow em float
+infinito:         .word  0x7f800000
+
 # Mensagens do menu do usuário
 menu_msg:        .asciiz "\n 1. Soma\n 2. Subtração\n 3. Multiplicação\n 4. Divisão\n 5. Potência\n 6. Raiz quadrada\n 7. Tabuada de X\n 8. IMC\n 9. Fatorial\n10. Fibonacci\n11. Encerrar programa\n"
-op_invalida_msg: .asciiz "Opção inválida\n"
+op_invalida_msg: .asciiz "\nOpção inválida\n"
 
 # Mensagens de uso geral
 barra_n:         .asciiz "\n"
@@ -24,6 +27,8 @@ div_por_0_msg:   .asciiz "\nNão há definição para divisão por zero. Utilize
 
 # Mensagens da operação de potência
 potencia_msg:    .asciiz "\nInsira a base e o expoente, respectivamente:\n"
+exp_neg_msg:     .asciiz "\nErro: essa calculadora não suporta valores negativos para o expoente\n"
+exp_nulo_msg:    .asciiz "\nErro: essa calculadora não suporta valor nulo para o expoente\n"
 
 # Mensagens da operação de IMC
 massa_msg:       .asciiz "\nInsira a massa em quilogramas: "
@@ -36,6 +41,10 @@ tab_num_msg:     .asciiz "\nA tabuada do "
 tab_eh_msg:      .asciiz " é: "
 tab_vir_msg:     .asciiz ", "
 tab_erro_msg:    .asciiz "\nErro: o parâmetro não se encontra no intervalo entre 1 e 10\n"
+
+# Mensagens da operação de Fibonacci
+fibonacci_msg:   .asciiz "\nInsira o intervalo em que deseja calcular a sequência:"
+intervalo_msg:   .asciiz "\nErro: o intervalo definido é inválido. O final do intervalo deve ser maior que o início\n"
 
 	.text
 
@@ -109,17 +118,17 @@ soma:
 	syscall
 
 	# Salva o primeiro valor lido
-	move $t2, $v0
+	move $t0, $v0
 
 	# Lê o segundo parâmetro
 	li $v0, 5
 	syscall
 
 	# Salva o segundo valor lido
-	move $t3, $v0
+	move $t1, $v0
 
-	# Realiza a soma ($t2 = $t2 + $t3)
-	add $t2, $t2, $t3
+	# Realiza a soma ($t0 = $t0 + $t1)
+	add $t0, $t0, $t1
 
 	# Imprime as mensagens de resultado
 	li $v0, 4
@@ -127,7 +136,7 @@ soma:
 	syscall
 
 	li $v0, 1
-	move $a0, $t2
+	move $a0, $t0
 	syscall
 
 	li $v0, 4
@@ -154,17 +163,17 @@ subtracao:
 	syscall
 
 	# Salva o primeiro valor lido
-	move $t2, $v0
+	move $t0, $v0
 
 	# Lê o segundo parâmetro
 	li $v0, 5
 	syscall
 
 	# Salva o segundo valor lido
-	move $t3, $v0
+	move $t1, $v0
 
-	# Realiza a subtração ($t2 = $t2 - $t3)
-	sub $t2, $t2, $t3
+	# Realiza a subtração ($t0 = $t0 - $t1)
+	sub $t0, $t0, $t1
 
 	# Imprime as mensagens de resultado
 	li $v0, 4
@@ -172,7 +181,7 @@ subtracao:
 	syscall
 
 	li $v0, 1
-	move $a0, $t2
+	move $a0, $t0
 	syscall
 
 	li $v0, 4
@@ -200,24 +209,24 @@ multiplicacao:
 	syscall
 
 	# Salva o primeiro valor lido
-	move $t2, $v0
+	move $t0, $v0
 
 	# Lê o segundo parâmetro
 	li $v0, 5
 	syscall
 
 	# Salva o segundo valor lido
-	move $t3, $v0
+	move $t1, $v0
 
-	# Realiza a multiplicação
-	mult $t3, $t2
+	# Realiza a multiplicação ($t0 * $t1)
+	mult $t0, $t1
 
 	# Salva o conteúdo dos registradores 'lo' e 'hi'
-	mflo $t4
-	mfhi $t5
+	mflo $t2
+	mfhi $t3
 
 	# Verfica overflow
-	bgt $t5, $zero, erro_overflow
+	bgt $t3, $zero, erro_overflow
 
 	# Imprime as mensagens de resultado
 	li $v0, 4
@@ -225,7 +234,7 @@ multiplicacao:
 	syscall
 
 	li $v0, 1
-	move $a0, $t4
+	move $a0, $t2
 	syscall
 
 	li $v0, 4
@@ -270,7 +279,7 @@ divisao:
 	# Verifica divisão por zero
 	beqz $t1, erro_div_por_0
 
-	# Realiza a divisão
+	# Realiza a divisão ($t0 / $t1)
 	div $t0, $t1
 
 	# Salva os valores do quociente e do resto ('lo' e 'hi')
@@ -313,7 +322,7 @@ divisao:
 #  e, em seguida, imprime o resultado.
 #  O primeiro parâmtro lido, a base, é um float e admite valores positivos e
 #  negativos, enquanto que o segundo, o expoente, deve ser um inteiro positivo
-#  (Verifica overflow)
+#  (Verifica overflow e entrada de parâmetro negativo ou nulo - expoente)
 #
 
 potencia:
@@ -330,7 +339,7 @@ potencia:
 	mov.s $f1, $f0
 
 	# Para verificar overflow
-	li $t2, 0x7f800000  # Infinito (overflow)
+	lw $t2, infinito # Infinito (overflow)
 	mtc1 $t2, $f3       # Carrega o valor
 
 	# Verifica overflow no primeiro parâmetro
@@ -340,6 +349,10 @@ potencia:
 	# Lê o segundo parâmetro (expoente)
 	li $v0, 5
 	syscall
+
+	# Verifica o segundo parâmetro é válido (> 0)
+	bltz $v0, erro_expoente_negativo
+	beqz $v0, erro_expoente_nulo
 
 	# Salva o valor lido
 	move $t0, $v0
@@ -354,7 +367,7 @@ potencia_loop:
 	addi $t1, $t1, 1            # Contador++
 
 	c.eq.s $f2, $f3             # Compara com o resultado obtido
-	bc1t erro_overflow          # Caso ocorra overflow, imprime o erro
+	bc1t erro_overflow          # Caso ocorra overflow
 
 	j potencia_loop             # Repete
 
@@ -379,7 +392,8 @@ potencia_fim:
 #***** Raiz quadrada ***********************************************************
 #
 #  Lê um número inteiro positivo e extrai sua raiz quadrada, imprimindo logo em
-#  seguida o resultado aproximado para inteiro
+#  seguida o resultado aproximado para inteiro.
+#  (Verifica overflow e entrada de parâmetro negativo)
 #
 
 raiz:
@@ -392,12 +406,23 @@ raiz:
 	li $v0, 5
 	syscall
 
-	# Carrega o parâmetro e chama a função que calcula a raiz quadrada
-	move $a0, $v0
-	jal sqrt
+	# Verifica se o parâmetro é válido (>= 0)
+	bltz $v0, erro_negativo
 
-	# Salva o valor retornado
+	# Salva o valor lido
 	move $t0, $v0
+
+	li $t1, 0  # Contador
+	li $t2, 0  # Auxiliar
+
+raiz_loop:
+	bgt $t2, $t0, raiz_fim  # Se $t1^2 > $t0, então já alcançou o resultado
+	addi $t1, $t1, 1        # Contador++
+	mul $t2, $t1, $t1       # $t2 = $t1^2
+	j raiz_loop             # Repete
+
+raiz_fim:
+	subi $t1, $t1, 1  # t1-- (valor anterior)
 
 	# Imprime as mensagens de resultado
 	li $v0, 4
@@ -405,7 +430,7 @@ raiz:
 	syscall
 
 	li $v0, 1
-	move $a0, $t0
+	move $a0, $t1
 	syscall
 
 	li $v0, 4
@@ -486,7 +511,8 @@ tabuada_fim:
 #***** IMC *********************************************************************
 #
 #  Lê massa e altura e calcula o indíce de massa corporal e, em seguida, imprime
-#  o resultado. Os parâmetros e o resultado são valores de ponto flutuante
+#  o resultado. Os parâmetros e o resultado são valores de ponto flutuante.
+#  (Verifica overflow e entrada de parâmetros negativos e nulos)
 #
 
 imc:
@@ -510,7 +536,7 @@ imc:
 	mov.s $f1, $f0
 
 	# Para verificar overflow
-	li $t0, 0x7f800000  # Infinito (overflow)
+	lw $t0, infinito    # Infinito (overflow)
 	mtc1 $t0, $f4       # Carrega o valor
 
 	# Verifica overflow no primeiro parâmetro
@@ -570,7 +596,7 @@ imc:
 #***** Fatorial ****************************************************************
 #
 #  Lê um número inteiro positivo, calcula seu fatorial e, em seguida, imprime
-#  o resultado. (Verifica overflow)
+#  o resultado. (Verifica overflow e entrada de parâmetro negativo)
 #
 
 fatorial:
@@ -584,7 +610,7 @@ fatorial:
 	syscall
 
 	# Verifica se o parâmetro é válido (>= 0)
-	blez $v0, erro_negativo
+	bltz $v0, erro_negativo
 
 	# Verifica se ocorrerá overflow (>= 13)
 	bge $v0, 13, erro_overflow
@@ -617,11 +643,55 @@ fatorial:
 #***** Fibonacci ***************************************************************
 #
 #  Lê dois números inteiros positivos que representam um intervalo e imprime a
-#  sequência de Fibonacci calculada neste. (Verifica intervalo)
+#  sequência de Fibonacci calculada neste.
+#  (Verifica intervalo e entrada de parâmetros negativos e nulos)
 #
 
 fibonacci:
-	# código
+	# Imprime a mensagem de entrada de parâmetros
+	li $v0, 4
+	la $a0, fibonacci_msg
+	syscall
+
+	# Lê o primeiro parâmetro (início do intervalo)
+	li $v0, 5
+	syscall
+
+	# Verifica se o primeiro parâmetro é válido (> 0)
+	bltz $v0, erro_negativo
+	beqz $v0, erro_nulo
+
+	# Salva o valor lido e carrega
+	move $t0, $v0
+	
+	# Lê o segundo parâmetro (fim do intervalo)
+	li $v0, 5
+	syscall
+	
+	# Verifica se o segundo parâmetro é válido (> 0 > início)
+	bltz $v0, erro_negativo
+	beqz $v0, erro_nulo
+	ble $v0, $t0, erro_intervalo
+	
+	# Salva o valor lido
+	move $t1, $v0
+	
+	# Imprime a mensagem de resultado
+	li $v0, 4
+	la $a0, resultado_msg
+	syscall
+
+	# Carrega os parâmetros e chama a função que calcula/imprime a sequência
+	move $a0, $t0
+	move $a1, $t1
+	jal fibo
+
+	# Imprime fim de linha
+	li $v0, 4
+	la $a0, barra_n
+	syscall
+
+	# Retorna ao menu
 	j menu
 
 
@@ -668,7 +738,28 @@ erro_div_por_0:
 	syscall
 	j menu
 
-# (Tabuada) Caso a entrada não esteja no intervalo definido - [1, 10]
+# (Potência) Caso o expoente seja negativo
+erro_expoente_negativo:
+	li $v0, 4
+	la $a0, exp_neg_msg
+	syscall
+	j menu
+
+# (Potência) Caso o expoente seja nulo
+erro_expoente_nulo:
+	li $v0, 4
+	la $a0, exp_nulo_msg
+	syscall
+	j menu
+
+# (Fibonacci) Caso o intervalo seja inválido (início > fim)
+erro_intervalo:
+	li $v0, 4
+	la $a0, intervalo_msg
+	syscall
+	j menu
+
+# (Tabuada) Caso a entrada não esteja no intervalo [1, 10]
 erro_tabuada:
 	li $v0, 4
 	la $a0, tab_erro_msg
@@ -677,33 +768,6 @@ erro_tabuada:
 
 
 ##### Procedimentos ############################################################
-
-
-#**** sqrt *********************************************************************
-#
-#  Extrai a raiz quadrada de um número, retornando o resultado inteiro mais
-#  próximo do valor real
-#
-#  Parâmetros:
-#    $a0: número cuja raiz quadrada deseja-se extrair
-#
-#  Retorno:
-#    $v0: inteiro mais próximo da raiz quadrada do número
-#
-
-sqrt:
-	li $t0, 0  # Contador
-	li $t1, 0  # Auxiliar
-
-loop_sqrt:
-	bgt $t1, $a0, end_sqrt  # Se $t0^2 > $a0, então já alcançou o resultado
-	addi $t0, $t0, 1        # Contador++
-	mul $t1, $t0, $t0       # $t1 = $t0^2
-	j loop_sqrt             # Repete
-
-end_sqrt:
-	subi $v0, $t0, 1 # $v0 = $t0 - 1 (valor anterior)
-	jr $ra
 
 
 #**** fat **********************************************************************
@@ -738,3 +802,27 @@ fat_fim:
 	lw $a0, 0($sp)    # Restauro o valor de $a0
 	addi $sp, $sp, 8  # Move de volta o ponteiro da pilha
 	jr $ra            # Retorna
+
+
+#**** fibo *********************************************************************
+#
+#  Calcula (de forma recursiva) a sequência de Fibonacci no intervalo fechado
+#  definido em $a0 e $a1 e imprime o resultado
+#
+#  Parâmetros:
+#    $a0: início do intervalo (fechado)
+#    $a1: final do intervalo (fechado)
+#
+
+fibo:
+	addi $sp, $sp, -12  # Move o ponteiro da pilha
+	sw $a0, 0($sp)      # Guarda o conteúdo de $a0
+	sw $a1, 4($sp)      # Guarda o conteúdo de $a1
+	sw $ra, 8($sp)      # Guarda o conteúdo de $ra
+
+fibo_fim:
+	lw $ra, 8($sp)     # Restaura o valor de $ra
+	lw $a1, 4($sp)     # Restaura o valor de $a1
+	lw $a0, 0($sp)     # Restaura o valor de $a0
+	addi $sp, $sp, 12  # Move de volta o ponteiro da pilha
+	jr $ra             # Retorna
