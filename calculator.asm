@@ -1,3 +1,39 @@
+#  ~ MIPS Calculator (https://github.com/lucasxavierleite/mips-calculator)
+#
+#      @@@  @@@@@  @@@ @@@  @@@@@           @   @   @@@@   @@@@
+#       @   @      @ @ @ @  @               @   @  @      @    @
+#       @   @      @  @  @  @       @@@@@   @   @  @@@@@  @@@@@
+#       @   @      @     @  @               @   @      @  @
+#      @@@  @@@@@  @     @  @@@@@            @@@   @@@@   @
+#
+#  Universidade de São Paulo - Instituto de Ciências Matemáticas e de Computação
+#  Departamento de Sistemas de Computação
+#  SSC0902 - Arquitetura e Organização de Computadores: 1º Trabalho Prático
+#  Profª. Drª. Sarita Mazzini Bruschi
+#
+#  Descrição do trabalho: programa em assembly MIPS para simular uma calculadora
+#  com determinadas operações. São elas:
+#
+#    • soma de 2 números (2 parâmetros);
+#    • subtração de 2 números (2 parâmetros);
+#    • multiplicação de 2 números, limitados a 16 bits cada um (2 parâmetros);
+#    • divisão de 2 números, , limitados a 16 bits cada um (2 parâmetros);
+#    • potência (2 parâmetros);
+#    • raiz quadrada (1 parâmetro);
+#    • tabuada de 1 número fornecido (1 parâmetro);
+#    • cálculo do IMC (Índice de Massa Corporal) (2 parâmetros);
+#    • fatorial de 1 número fornecido (1 parâmetro);
+#    • cálculo da sequência de Fibonacci dado um intervalo (a,b) definido pelo
+#    usuário (2 parâmetros);
+#    • encerrar o programa.
+#
+#  Autores/integrantes:
+#    Ariel de Oliveira Cardoso, 9783438
+#    Lucas Xavier Ebling Pereira, 10692183
+#    Lucas Xavier Leite, 10783347
+#    Pedro Henrique Nieuwenhoff, 10377729
+#
+
 	.data
 
 # Valor "infinito" para verificação de overflow em float
@@ -12,6 +48,7 @@ barra_n:         .asciiz "\n"
 ins_um_msg:      .asciiz "\nInsira um número: "
 ins_dois_msg:    .asciiz "\nInsira dois números:\n"
 resultado_msg:   .asciiz "\nResultado: "
+vir_msg:         .asciiz ", "
 
 # Mensagens de erro de uso geral
 overflow_msg:    .asciiz "\nErro: o resultado obtido ultrapassa o limite. Utilize números menores\n"
@@ -39,11 +76,10 @@ imc_msg:         .asciiz "\nIMC: "
 tab_ins_msg:     .asciiz "\nInsira um número entre 1 e 10: "
 tab_num_msg:     .asciiz "\nA tabuada do "
 tab_eh_msg:      .asciiz " é: "
-tab_vir_msg:     .asciiz ", "
 tab_erro_msg:    .asciiz "\nErro: o parâmetro não se encontra no intervalo entre 1 e 10\n"
 
 # Mensagens da operação de Fibonacci
-fibonacci_msg:   .asciiz "\nInsira o intervalo em que deseja calcular a sequência:"
+fibonacci_msg:   .asciiz "\nInsira o intervalo em que deseja calcular a sequência:\n"
 intervalo_msg:   .asciiz "\nErro: o intervalo definido é inválido. O final do intervalo deve ser maior que o início\n"
 
 	.text
@@ -492,7 +528,7 @@ tabuada_loop:
 
 	beq $t1, $t3, tabuada_fim  # Verifica se é o último
 	li $v0, 4                  # Se não for, imprime a vírgula
-	la $a0, tab_vir_msg
+	la $a0, vir_msg
 	syscall
 
 	addi $t1, $t1, 1           # Contador++
@@ -642,7 +678,7 @@ fatorial:
 
 #***** Fibonacci ***************************************************************
 #
-#  Lê dois números inteiros positivos que representam um intervalo e imprime a
+#  Lê dois números inteiros positivos representando um intervalo e imprime a
 #  sequência de Fibonacci calculada neste.
 #  (Verifica intervalo e entrada de parâmetros negativos e nulos)
 #
@@ -653,7 +689,7 @@ fibonacci:
 	la $a0, fibonacci_msg
 	syscall
 
-	# Lê o primeiro parâmetro (início do intervalo)
+	# Lê o primeiro parâmetro de início do intervalo (a)
 	li $v0, 5
 	syscall
 
@@ -662,30 +698,43 @@ fibonacci:
 	beqz $v0, erro_nulo
 
 	# Salva o valor lido e carrega
-	move $t0, $v0
+	move $s0, $v0
 	
-	# Lê o segundo parâmetro (fim do intervalo)
+	# Lê o segundo parâmetro de fim do intervalo (b)
 	li $v0, 5
 	syscall
 	
 	# Verifica se o segundo parâmetro é válido (> 0 > início)
 	bltz $v0, erro_negativo
 	beqz $v0, erro_nulo
-	ble $v0, $t0, erro_intervalo
+	ble $v0, $s0, erro_intervalo
 	
 	# Salva o valor lido
-	move $t1, $v0
+	move $s1, $v0
 	
 	# Imprime a mensagem de resultado
 	li $v0, 4
 	la $a0, resultado_msg
 	syscall
 
-	# Carrega os parâmetros e chama a função que calcula/imprime a sequência
-	move $a0, $t0
-	move $a1, $t1
+fibonacci_loop:
+	move $a0, $s0                # Fibonacci(a)
 	jal fibo
 
+	move $a0, $v0                # Salva o valor retornado
+	li $v0, 1                    # Imprime o termo
+	syscall
+
+	beq $s0, $s1, fibonacci_fim  # Enquanto a <= b
+
+	li $v0, 4                    # Imprime a vírgula
+	la $a0, vir_msg
+	syscall
+
+	addi $s0, $s0, 1             # a++
+	j fibonacci_loop             # Repete
+
+fibonacci_fim:
 	# Imprime fim de linha
 	li $v0, 4
 	la $a0, barra_n
@@ -789,13 +838,13 @@ fat:
 
 	beqz $a0, fat_retorna_1  # Verifica condição de parada
 	addi $a0, $a0, -1        # Carrega em $a0 o elemento anterior
-	jal fat                  # Chamada recursiva
+	jal fat                  # Chamada recursiva: fat(n-1)
 	addi $a0, $a0, 1         # Restaura o valor original
 	mul $v0, $v0, $a0        # Realiza a multiplicação
 	j fat_fim                # Pula para o fim (ignora fat_retorna_1)
 
 fat_retorna_1:
-	li $v0, 1  # Retorna 1 na condição de parada
+	li $v0, 1  # Retorna 1 na condição de parada (n = 0)
 
 fat_fim:
 	lw $ra, 4($sp)    # Restaura o valor de $ra
@@ -806,23 +855,40 @@ fat_fim:
 
 #**** fibo *********************************************************************
 #
-#  Calcula (de forma recursiva) a sequência de Fibonacci no intervalo fechado
-#  definido em $a0 e $a1 e imprime o resultado
+#  Calcula (de forma recursiva) o enésimo termo da sequência de Fibonacci.
 #
 #  Parâmetros:
-#    $a0: início do intervalo (fechado)
-#    $a1: final do intervalo (fechado)
+#    $a0: posição do termo (n)
+#
+#  Retorno:
+#    $v0: valor do enésimo termo da sequência
 #
 
 fibo:
-	addi $sp, $sp, -12  # Move o ponteiro da pilha
-	sw $a0, 0($sp)      # Guarda o conteúdo de $a0
-	sw $a1, 4($sp)      # Guarda o conteúdo de $a1
-	sw $ra, 8($sp)      # Guarda o conteúdo de $ra
+	addi $sp, $sp, -12   # Move o ponteiro da pilha
+	sw $a0, 0($sp)       # Guarda o conteúdo de $a0
+	sw $ra, 4($sp)       # Guarda o conteúdo de $ra
+
+	ble $a0, 1, fibo_retorna_n  # Verifica condição de parada
+	
+	addi $a0, $a0, -1           # $a0-- (n-1)
+	jal fibo                    # Chamada recursiva: fibo(n-1)
+	sw $v0, 8($sp)              # Salva o valor retornado na pilha
+
+	addi $a0, $a0, -1           # $a0-- (n-2)
+	jal fibo                    # Chamada recursiva: fibo(n-2)
+	move $t1, $v0               # Salva o valor retornado
+	
+	lw $t0, 8($sp)              # Carrega o valor retornado na chamada anterior
+	add $v0, $t0, $t1           # $v0 = fibo(n-1) + fibo(n-2)
+
+	j fibo_fim                  # Pula para o fim (ignora fibo_retorna_n
+
+fibo_retorna_n:
+	move $v0, $a0  # Retorna n na condição de parada (n = 1)
 
 fibo_fim:
-	lw $ra, 8($sp)     # Restaura o valor de $ra
-	lw $a1, 4($sp)     # Restaura o valor de $a1
-	lw $a0, 0($sp)     # Restaura o valor de $a0
-	addi $sp, $sp, 12  # Move de volta o ponteiro da pilha
-	jr $ra             # Retorna
+	lw $ra, 4($sp)      # Restaura o valor de $ra
+	lw $a0, 0($sp)      # Restaura o valor de $a0
+	addi $sp, $sp, 12   # Move de volta o ponteiro da pilha
+	jr $ra              # Retorna
